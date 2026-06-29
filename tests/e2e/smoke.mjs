@@ -9,6 +9,36 @@
 if (!process.env.PLAYWRIGHT_BROWSERS_PATH) {
     process.env.PLAYWRIGHT_BROWSERS_PATH = '0';
 }
+
+// Auto-configuración del entorno del navegador (ANTES de importar playwright, para que
+// Chromium herede estas variables al lanzarse). En entornos sin las librerías de sistema
+// del navegador (~/.cache no escribible, faltan libglib/X11/fuentes) suele existir un
+// prefijo local de libs en /tmp/deblibs; si está, lo usamos vía LD_LIBRARY_PATH +
+// fontconfig. Así esta prueba arranca el navegador tanto si se corre con `node
+// tests/e2e/smoke.mjs` como vía `tests/e2e/run.sh`, sin depender de variables externas.
+import { existsSync } from 'node:fs';
+(function bootstrapBrowserEnv() {
+    const prefix = '/tmp/deblibs/prefix';
+    if (!existsSync(prefix)) return; // entorno ya trae todo: nada que hacer
+    const libDirs = [
+        `${prefix}/usr/lib/x86_64-linux-gnu`,
+        `${prefix}/lib/x86_64-linux-gnu`,
+        `${prefix}/usr/lib`,
+        `${prefix}/lib`,
+    ].filter(existsSync);
+    const current = process.env.LD_LIBRARY_PATH || '';
+    if (!current.includes(libDirs[0] || '')) {
+        process.env.LD_LIBRARY_PATH = [...libDirs, current].filter(Boolean).join(':');
+    }
+    if (!process.env.FONTCONFIG_FILE) {
+        const conf = ['/tmp/fc/fonts.conf', '/tmp/deblibs/fonts.conf'].find(existsSync);
+        if (conf) process.env.FONTCONFIG_FILE = conf;
+    }
+    // HOME/cache escribibles para nss/fontconfig (evita rutas no escribibles de root).
+    if (!process.env.HOME || !existsSync(process.env.HOME)) process.env.HOME = '/tmp/pwhome';
+    process.env.XDG_CACHE_HOME = process.env.XDG_CACHE_HOME || `${process.env.HOME}/.cache`;
+})();
+
 const { chromium } = await import('playwright');
 
 const BASE = process.env.E2E_BASE || 'http://127.0.0.1:8123';
