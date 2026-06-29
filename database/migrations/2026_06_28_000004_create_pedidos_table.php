@@ -12,9 +12,15 @@ return new class extends Migration
             $table->id();
             $table->foreignId('bot_contact_id')->nullable()->constrained('bot_contacts')->nullOnDelete();
             $table->foreignId('plan_id')->nullable()->constrained('planes')->nullOnDelete();
+            $table->foreignId('numero_id')->nullable()->constrained('numeros')->nullOnDelete();
             $table->string('cliente')->nullable();
             $table->string('telefono');
-            $table->string('estado')->default('nuevo');
+            $table->string('email')->nullable();
+            // Flujo: iniciado → en_pago → pagado → numero_asignado → entregado (+ cancelado)
+            $table->string('estado')->default('iniciado');
+            $table->integer('total')->nullable();       // total en centavos
+            $table->string('link_pago')->nullable();    // enlace de pago generado en el flujo
+            $table->text('notas')->nullable();
             $table->timestamps();
         });
     }

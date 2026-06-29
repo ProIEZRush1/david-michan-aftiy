@@ -13,12 +13,17 @@ class Plan extends Model
         'nombre',
         'precio',
         'descripcion',
+        'datos',
+        'minutos',
+        'sms',
+        'vigencia_dias',
         'activo',
         'orden',
     ];
 
     protected $casts = [
         'precio' => 'int',
+        'vigencia_dias' => 'int',
         'activo' => 'bool',
     ];
 
