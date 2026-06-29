@@ -7,30 +7,27 @@ cd /app || exit 1
 # 1. Ensure a .env exists.
 [ -f .env ] || cp .env.production .env
 
-# 2. Ensure a valid base64 APP_KEY is exported. Resolution order:
-#    (a) a base64 key already injected via the APP_KEY env var (deploy-platform secret),
-#    (b) a base64 key already written in .env,
-#    (c) a freshly generated one (persisted to .env so it's stable for the container's life).
-#    We deliberately do NOT rely on `php artisan key:generate`: when the platform injects an
-#    empty/placeholder APP_KEY env var, key:generate refuses ("APP_KEY is already present in
-#    the environment") and leaves the app keyless — which 500s EVERY route. So we resolve the
-#    key ourselves and always `export` a valid one (an exported value wins over the .env file).
-KEY=""
-case "$APP_KEY" in
-    base64:*) KEY="$APP_KEY" ;;   # (a) a valid injected key — keep it, never clobber it
-esac
-if [ -z "$KEY" ]; then            # (b) a valid key already in .env
-    KEY="$(grep '^APP_KEY=base64:' .env 2>/dev/null | head -1 | cut -d '=' -f2-)"
-fi
-if [ -z "$KEY" ]; then            # (c) none found anywhere → generate one ourselves and persist it
-    KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));' 2>/dev/null)"
-    if grep -q '^APP_KEY=' .env 2>/dev/null; then
-        php -r '$f=".env";$c=file_get_contents($f);file_put_contents($f,preg_replace("/^APP_KEY=.*$/m","APP_KEY=".$argv[1],$c));' "$KEY" 2>/dev/null || true
-    else
-        printf '\nAPP_KEY=%s\n' "$KEY" >> .env
+# 1b. Sync the injected runtime env (Postgres, URLs, name) INTO .env. `php artisan serve` runs under a
+#     php.ini whose variables_order may exclude 'E', so $_ENV is empty and Dotenv falls back to the
+#     .env defaults (DB_CONNECTION=sqlite) — making WEB requests hit an empty sqlite while the CLI uses
+#     the real Postgres. Writing the real values into .env makes both agree.
+for V in DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD APP_URL ASSET_URL APP_NAME APP_ENV; do
+    eval "VAL=\${$V}"
+    [ -n "$VAL" ] || continue
+    if grep -q "^$V=" .env; then
+        grep -v "^$V=" .env > .env.tmp && mv .env.tmp .env
     fi
+    printf '%s=%s\n' "$V" "$VAL" >> .env
+done
+
+# 2. Ensure a valid APP_KEY and export it. Read the base64 line SPECIFICALLY (an empty
+#    `APP_KEY=` line from .env.production must never win) and generate one if absent.
+KEYLINE="$(grep '^APP_KEY=base64:' .env 2>/dev/null | head -1)"
+if [ -z "$KEYLINE" ]; then
+    php artisan key:generate --force || true
+    KEYLINE="$(grep '^APP_KEY=base64:' .env 2>/dev/null | head -1)"
 fi
-export APP_KEY="$KEY"
+export APP_KEY="$(printf '%s' "$KEYLINE" | cut -d '=' -f2-)"
 
 # 3. Ensure the SQLite database file and its directory exist (default path).
 DB_DATABASE="${DB_DATABASE:-/app/database/database.sqlite}"
@@ -74,9 +71,17 @@ chmod -R ug+rwX storage bootstrap/cache "$DB_DIR" 2>/dev/null || true
     done
 ) &
 
-# 6. Clear (do NOT cache) config so each request reads the live exported APP_KEY — caching risks
-#    baking an empty key if the env wasn't ready at cache time, which 500s every route.
-php artisan config:clear || true
+# 6. CACHE the config so WEB requests read a single stable baked config. `php artisan serve` does NOT
+#    reliably resolve .env/$_ENV per request under its SAPI, so an un-cached web request silently fell
+#    back to the .env sqlite default (empty → "no such table: users") while the CLI used Postgres.
+#    This runs AFTER the env-sync (1b) and the APP_KEY export (2), so the cache bakes the real Postgres
+#    creds + a real APP_KEY (caching with an empty exported key is what used to 500 every route).
+#    Verify the baked key is non-empty; if anything went wrong, fall back to clearing so routes still load.
+php artisan config:cache 2>&1 | tail -1
+if [ "$(php artisan tinker --execute='echo strlen(config("app.key"));' 2>/dev/null | tail -1)" = "0" ]; then
+    echo "[entrypoint] baked APP_KEY empty — falling back to config:clear"
+    php artisan config:clear || true
+fi
 
 # 7. Serve under an auto-respawn loop: if a request ever crashes the dev server, it restarts
 #    immediately, so the app is never permanently down (no `set -e`, so the loop always continues).
