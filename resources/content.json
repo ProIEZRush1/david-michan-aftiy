@@ -1,0 +1,38 @@
+{
+  "business": "Moda MX",
+  "tagline": "Ropa y tendencias",
+  "theme": { "primary": "#7c3aed", "accent": "#db2777" },
+  "built_by_whatsapp": "5215594356241",
+  "nav": ["Inicio", "Productos", "Nosotros", "Contacto"],
+  "hero": {
+    "eyebrow": "Nueva colección · 2026",
+    "title": "Tu estilo, tu historia.",
+    "subtitle": "Ropa que combina tendencia y comodidad. Descubre las piezas que están marcando la temporada.",
+    "cta": "Comprar ahora",
+    "image": "https://picsum.photos/seed/heromoda/700/820"
+  },
+  "stats": [
+    { "value": "+1,200", "label": "clientes felices" },
+    { "value": "48h", "label": "envío exprés" },
+    { "value": "4.9★", "label": "calificación" }
+  ],
+  "strip": ["🚚 Envío gratis desde $999", "↩️ 30 días de devolución", "🔒 Pago seguro", "💬 Atención por WhatsApp"],
+  "products_title": "Lo más nuevo",
+  "products": [
+    { "name": "Blazer Oversize", "price": "$899 MXN", "tag": "Nuevo", "seed": "pa" },
+    { "name": "Vestido Lino", "price": "$749 MXN", "tag": "Top", "seed": "pb" },
+    { "name": "Tenis Urbanos", "price": "$1,290 MXN", "tag": "Nuevo", "seed": "pc" },
+    { "name": "Suéter Tejido", "price": "$659 MXN", "tag": "", "seed": "pd" },
+    { "name": "Jeans Mom Fit", "price": "$699 MXN", "tag": "Top", "seed": "pe" },
+    { "name": "Chamarra Denim", "price": "$1,150 MXN", "tag": "Nuevo", "seed": "pf" },
+    { "name": "Camisa Casual", "price": "$549 MXN", "tag": "", "seed": "pg" },
+    { "name": "Bolso de Mano", "price": "$829 MXN", "tag": "Top", "seed": "ph" }
+  ],
+  "about": {
+    "title": "Sobre Moda MX",
+    "text": "Somos una marca mexicana que cree que vestir bien no debe ser complicado ni caro. Seleccionamos cada prenda pensando en calidad, comodidad y estilo.",
+    "points": ["Prendas de calidad seleccionadas a mano", "Envíos a todo México", "Cambios y devoluciones sin complicaciones"],
+    "image": "https://picsum.photos/seed/aboutmoda/800/700"
+  },
+  "contact": { "title": "Únete al club Moda MX", "text": "Recibe ofertas exclusivas y las novedades antes que nadie." }
+}
